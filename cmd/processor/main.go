@@ -23,18 +23,18 @@ func main() {
 		return
 	}
 
-	for _, record := range records {
+	for id, record := range records {
 		// Process only if dirty is true
 		if record.Dirty {
 			err := processor(record)
 			if err != nil {
 				fmt.Printf("Error processing record ID %d: %v\n", record.ID, err)
 				continue
-			} else {
-				// Mark the record as clean after processing
-				record.Dirty = false
-				fmt.Printf("Record ID %d processed successfully and marked as clean.\n", record.ID)
 			}
+			// Mark the record as clean after processing
+			record.Dirty = false
+			records[id] = record // Update the record in the map
+			fmt.Printf("Record ID %d processed successfully and marked as clean.\n", record.ID)
 		}
 	}
 
