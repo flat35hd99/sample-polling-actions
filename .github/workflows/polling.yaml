@@ -1,0 +1,26 @@
+name: Polling Workflow
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour
+  workflow_dispatch:
+
+concurrency:
+  group: 'polling-workflow'
+  cancel-in-progress: true
+
+env:
+  TARGET_URL: https://api.example.com/polling-endpoint
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Run polling script
+        run: |
+          echo "Polling the API..."
+          # Replace with your actual polling command
+          curl -s https://api.example.com/polling-endpoint

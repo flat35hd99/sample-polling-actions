@@ -1,0 +1,19 @@
+{
+    "items": [
+        {
+            "id": 1,
+            "name": "sample-polling-actions",
+            "content": "This is a sample repository for polling actions."
+        },
+        {
+            "id": 2,
+            "name": "sample.json",
+            "content": "This JSON file contains metadata about the repository and its files."
+        },
+        {
+            "id": 3,
+            "name": "polling.yaml",
+            "content": "This is a GitHub Actions workflow file for polling an API."
+        }
+    ]
+}
