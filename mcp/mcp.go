@@ -196,7 +196,7 @@ func showToolHelp(toolName string) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal input schema: %v", err)
 		}
-		fmt.Printf("Input Schema:\n%s\n", string(schemaBytes))
+		fmt.Printf("Input Schema:\n  %s\n", string(schemaBytes))
 		fmt.Println()
 
 		// Generate example input
@@ -210,7 +210,7 @@ func showToolHelp(toolName string) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal generated input: %v", err)
 		}
-		fmt.Printf("Example Input:\n%s\n", string(res))
+		fmt.Printf("Example Input:\n  %s\n", string(res))
 	} else {
 		fmt.Println("No input schema available for this tool.")
 	}
