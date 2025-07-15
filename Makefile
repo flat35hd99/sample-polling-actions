@@ -7,3 +7,6 @@ all: $(TARGETS)
 
 bin/%:
 	go build -o $@ ./cmd/$*
+
+clean:
+	rm $(TARGETS)
