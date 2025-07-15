@@ -3,131 +3,217 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/ryanolee/go-chaff"
+	"github.com/spf13/cobra"
+)
+
+const version = "0.0.1"
+
+var (
+	mcpClient *client.Client
+	ctx       context.Context
 )
 
 // これは、mcp clientを利用して、mcpをcli tool化するものです。
-// --help のときには、ツール一覧からヘルプを生成します。
-// --version のときには、バージョン情報を表示します。固定値0.0.1を返します。
-// call <tool name> -i <tool input> のときにはツールを呼びだします。
+// list コマンドでツール一覧を表示
+// call コマンドでツールを呼び出し
 func main() {
-	c, err := client.NewStdioMCPClient(
+	// Initialize context
+	ctx = context.Background()
+
+	// Initialize MCP client
+	var err error
+	mcpClient, err = client.NewStdioMCPClient(
 		"npx", []string{}, "-y", "@modelcontextprotocol/server-memory",
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer c.Close()
-
-	ctx := context.Background()
+	defer mcpClient.Close()
 
 	// Initialize the connection
 	initRequest := mcp.InitializeRequest{}
-	if _, err := c.Initialize(ctx, initRequest); err != nil {
+	if _, err := mcpClient.Initialize(ctx, initRequest); err != nil {
 		log.Fatal(err)
 	}
 
-	resListTools, err := c.ListTools(ctx, mcp.ListToolsRequest{})
+	// Create root command
+	rootCmd := &cobra.Command{
+		Use:   "mcp",
+		Short: "MCP CLI tool for interacting with Model Context Protocol servers",
+		Long:  `A command-line interface for interacting with Model Context Protocol (MCP) servers.`,
+	}
+
+	// Add version flag to root command
+	rootCmd.Version = version
+
+	// Add subcommands
+	rootCmd.AddCommand(newListCommand())
+	rootCmd.AddCommand(newCallCommand())
+
+	// Execute root command
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+// newListCommand creates the list command
+func newListCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List available MCP tools",
+		Long:  `List all available MCP tools with their descriptions, input schemas, and example inputs.`,
+		RunE:  runListCommand,
+	}
+
+	return cmd
+}
+
+// newCallCommand creates the call command
+func newCallCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "call [tool-name]",
+		Short: "Call an MCP tool",
+		Long:  `Call an MCP tool by name with the provided input.`,
+		Args:  cobra.ExactArgs(1),
+		RunE:  runCallCommand,
+	}
+
+	cmd.Flags().StringP("input", "i", "", "Input for the MCP tool (JSON string)")
+	cmd.Flags().BoolP("help-tool", "", false, "Show tool schema and example input")
+
+	return cmd
+}
+
+// runListCommand executes the list command
+func runListCommand(cmd *cobra.Command, args []string) error {
+	resListTools, err := mcpClient.ListTools(ctx, mcp.ListToolsRequest{})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to list tools: %v", err)
 	}
 
-	var (
-		helpFlag    bool
-		versionFlag bool
-		toolName    string
-		toolInput   string
-	)
+	fmt.Println("Available MCP Tools:")
+	fmt.Println("===================")
 
-	// global flags
-	flag.BoolVar(&helpFlag, "help", false, "Display help message")
-	flag.BoolVar(&versionFlag, "version", false, "Display version information")
-	flag.StringVar(&toolName, "call", "", "Call an MCP tool by name")
-	flag.StringVar(&toolInput, "i", "", "Input for the MCP tool (JSON string)")
-
-	flag.Parse()
-
-	if helpFlag {
-		fmt.Println("Usage:")
-		fmt.Println("  mcp -help                 Display this help message")
-		fmt.Println("  mcp -version              Display version information")
-		fmt.Println("  mcp call <tool name> -i <tool input>  Call an MCP tool")
-		fmt.Println("\nAvailable Tools:")
-		for _, tool := range resListTools.Tools {
-			fmt.Printf("  - %s: %s\n", tool.Name, tool.Description)
-			if tool.InputSchema.Type != "" {
-
-				schemaBytes, err := json.MarshalIndent(tool.InputSchema, "    ", "  ")
-				if err != nil {
-					log.Printf("Warning: Failed to marshal input schema for tool %s: %v", tool.Name, err)
-					continue
-				}
-				fmt.Printf("    Input Schema:\n%s\n", string(schemaBytes))
-
-				{
-					generator, err := chaff.ParseSchemaStringWithDefaults(string(schemaBytes))
-					if err != nil {
-						log.Printf("Warning: Failed to parse raw input schema for tool %s: %v", tool.Name, err)
-						continue
-					}
-					result := generator.GenerateWithDefaults()
-					res, err := json.MarshalIndent(result, "    ", "  ")
-					if err != nil {
-						log.Printf("Warning: Failed to marshal generated input for tool %s: %v", tool.Name, err)
-						continue
-					}
-					fmt.Printf("    Example Input:\n%s\n", string(res))
-				}
-			}
+	for i, tool := range resListTools.Tools {
+		if i > 0 {
+			fmt.Println()
 		}
-		return
+
+		fmt.Printf("Tool: %s\n", tool.Name)
+		fmt.Printf("Description: %s\n", tool.Description)
 	}
 
-	if versionFlag {
-		fmt.Println("0.0.1")
-		return
+	return nil
+}
+
+// runCallCommand executes the call command
+func runCallCommand(cmd *cobra.Command, args []string) error {
+	toolName := args[0]
+	
+	// Check if help-tool flag is set
+	helpTool, err := cmd.Flags().GetBool("help-tool")
+	if err != nil {
+		return fmt.Errorf("failed to get help-tool flag: %v", err)
 	}
 
-	if toolName != "" {
-		if toolInput == "" {
-			log.Fatal("Error: Tool input (-i) is required when calling a tool.")
-		}
+	// If help-tool is requested, show schema and example
+	if helpTool {
+		return showToolHelp(toolName)
+	}
 
-		inputJSON := json.RawMessage(toolInput)
-		callRequest := mcp.CallToolRequest{
-			Params: mcp.CallToolParams{
-				Name:      toolName,
-				Arguments: inputJSON,
-			},
-		}
+	// For actual tool calls, input is required
+	toolInput, err := cmd.Flags().GetString("input")
+	if err != nil {
+		return fmt.Errorf("failed to get input flag: %v", err)
+	}
 
-		resCallTool, err := c.CallTool(ctx, callRequest)
+	if toolInput == "" {
+		return fmt.Errorf("tool input is required (use --input flag)")
+	}
+
+	inputJSON := json.RawMessage(toolInput)
+	callRequest := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name:      toolName,
+			Arguments: inputJSON,
+		},
+	}
+
+	resCallTool, err := mcpClient.CallTool(ctx, callRequest)
+	if err != nil {
+		return fmt.Errorf("error calling tool %s: %v", toolName, err)
+	}
+
+	if resCallTool.IsError {
+		return fmt.Errorf("tool call resulted in an error: %+v", resCallTool.Content)
+	}
+
+	for _, c := range resCallTool.Content {
+		// Check if the content is TextContent and print its text
+		if tc, ok := c.(mcp.TextContent); ok {
+			fmt.Println(tc.Text)
+		} else {
+			// Handle other content types if necessary, or just print a generic message
+			fmt.Printf("Tool returned non-text content of type %T: %+v\n", c, c)
+		}
+	}
+
+	return nil
+}
+
+// showToolHelp displays the schema and example input for a specific tool
+func showToolHelp(toolName string) error {
+	resListTools, err := mcpClient.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		return fmt.Errorf("failed to list tools: %v", err)
+	}
+
+	var targetTool *mcp.Tool
+	for _, tool := range resListTools.Tools {
+		if tool.Name == toolName {
+			targetTool = &tool
+			break
+		}
+	}
+
+	if targetTool == nil {
+		return fmt.Errorf("tool '%s' not found", toolName)
+	}
+
+	fmt.Printf("Tool: %s\n", targetTool.Name)
+	fmt.Printf("Description: %s\n", targetTool.Description)
+	fmt.Println()
+
+	if targetTool.InputSchema.Type != "" {
+		schemaBytes, err := json.MarshalIndent(targetTool.InputSchema, "  ", "  ")
 		if err != nil {
-			log.Fatalf("Error calling tool %s: %v", toolName, err)
+			return fmt.Errorf("failed to marshal input schema: %v", err)
+		}
+		fmt.Printf("Input Schema:\n%s\n", string(schemaBytes))
+		fmt.Println()
+
+		// Generate example input
+		generator, err := chaff.ParseSchemaStringWithDefaults(string(schemaBytes))
+		if err != nil {
+			return fmt.Errorf("failed to parse input schema: %v", err)
 		}
 
-		if resCallTool.IsError {
-			log.Fatalf("Tool call resulted in an error: %+v", resCallTool.Content)
+		result := generator.GenerateWithDefaults()
+		res, err := json.MarshalIndent(result, "  ", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal generated input: %v", err)
 		}
-
-		for _, c := range resCallTool.Content {
-			// Check if the content is TextContent and print its text
-			if tc, ok := c.(mcp.TextContent); ok {
-				fmt.Println(tc.Text)
-			} else {
-				// Handle other content types if necessary, or just print a generic message
-				fmt.Printf("Tool returned non-text content of type %T: %+v\n", c, c)
-			}
-		}
-		return
+		fmt.Printf("Example Input:\n%s\n", string(res))
+	} else {
+		fmt.Println("No input schema available for this tool.")
 	}
 
-	// If no flags are provided, display help
-	flag.Usage()
+	return nil
 }
