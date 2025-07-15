@@ -13,12 +13,46 @@ env:
   TARGET_URL: https://flat35hd99.github.io/sample-polling-actions/sample.json
 
 jobs:
-  poll:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+      
+      - name: Build
+        run: make
+      
+      - name: Upload artifacts from bin directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-artifacts
+          path: bin/
+
+  poll:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: bin-artifacts
+
       - name: Run polling script
         run: |
-          curl -s $TARGET_URL | jq '.'
+          curl -s $TARGET_URL | ./bin/inserter
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com" 
+
+          git add .
+          git commit -m "Update from polling script" || echo "No changes to commit"
+
+          git push origin HEAD:main || echo "No changes to push"
