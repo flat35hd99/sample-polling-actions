@@ -21,9 +21,11 @@ jobs:
 
       - name: Set up Go
         uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       
       - name: Build
-        run: make
+        run: make -j
       
       - name: Upload artifacts from bin directory
         uses: actions/upload-artifact@v4
