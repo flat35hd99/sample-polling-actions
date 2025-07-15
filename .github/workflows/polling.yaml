@@ -10,17 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARGET_URL: https://api.example.com/polling-endpoint
+  TARGET_URL: https://flat35hd99.github.io/sample-polling-actions/sample.json
 
 jobs:
   poll:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Run polling script
         run: |
-          echo "Polling the API..."
-          # Replace with your actual polling command
-          curl -s https://api.example.com/polling-endpoint
+          curl -s $TARGET_URL | jq '.'
