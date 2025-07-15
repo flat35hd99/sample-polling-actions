@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -85,7 +86,7 @@ func newCallCommand() *cobra.Command {
 		RunE:  runCallCommand,
 	}
 
-	cmd.Flags().StringP("input", "i", "", "Input for the MCP tool (JSON string)")
+	cmd.Flags().StringP("input", "i", "", "Input for the MCP tool (JSON string). Use '-' to read from stdin")
 	cmd.Flags().BoolP("help-tool", "", false, "Show tool schema and example input")
 
 	return cmd
@@ -136,6 +137,18 @@ func runCallCommand(cmd *cobra.Command, args []string) error {
 
 	if toolInput == "" {
 		return fmt.Errorf("tool input is required (use --input flag)")
+	}
+
+	// If input is "-", read from stdin
+	if toolInput == "-" {
+		rawInput, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read from stdin: %v", err)
+		}
+		toolInput = string(rawInput)
+		if toolInput == "" {
+			return fmt.Errorf("no input provided from stdin")
+		}
 	}
 
 	inputJSON := json.RawMessage(toolInput)
