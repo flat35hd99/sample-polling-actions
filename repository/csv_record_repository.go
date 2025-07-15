@@ -10,13 +10,13 @@ import (
 	"github.com/flat35hd99/sample-polling-actions/domain"
 )
 
-// CSVRecordRepository implements RecordRepository for CSV files.
+// CSVRecordRepository implements domain.RecordRepository for CSV files.
 type CSVRecordRepository struct {
 	FilePath string
 }
 
 // NewCSVRecordRepository creates a new CSVRecordRepository.
-func NewCSVRecordRepository(filePath string) *CSVRecordRepository {
+func NewCSVRecordRepository(filePath string) domain.RecordRepository {
 	return &CSVRecordRepository{FilePath: filePath}
 }
 
