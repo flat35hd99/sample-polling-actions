@@ -15,11 +15,16 @@ func processor(record domain.Record) error {
 }
 
 func main() {
-	repo := repository.NewCSVRecordRepository("data.csv")
+	sqliteDBPath := "data.db"
+	repo, err := repository.NewSQLiteRecordRepository(sqliteDBPath)
+	if err != nil {
+		fmt.Printf("Error initializing SQLite repository: %v\n", err)
+		return
+	}
 
 	records, err := repo.GetAllRecords()
 	if err != nil {
-		fmt.Printf("Error reading records: %v\n", err)
+		fmt.Printf("Error reading records from SQLite: %v\n", err)
 		return
 	}
 
@@ -40,7 +45,7 @@ func main() {
 
 	// Save the updated records back to the CSV
 	if err := repo.SaveRecords(records); err != nil {
-		fmt.Printf("Error saving records: %v\n", err)
+		fmt.Printf("Error saving records to SQLite: %v\n", err)
 		return
 	}
 }

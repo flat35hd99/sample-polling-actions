@@ -69,21 +69,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	csvFilePath := "data.csv"
-	repo := repository.NewCSVRecordRepository(csvFilePath)
+	sqliteDBPath := "data.db"
+	repo, err := repository.NewSQLiteRecordRepository(sqliteDBPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing SQLite repository: %v\n", err)
+		os.Exit(1)
+	}
 
 	existingRecords, err := repo.GetAllRecords()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading existing CSV data: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error reading existing SQLite data: %v\n", err)
 		os.Exit(1)
 	}
 
 	mergedRecords := mergeData(existingRecords, input)
 
 	if err := repo.SaveRecords(mergedRecords); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing CSV data: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error writing SQLite data: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("Data successfully inserted/updated in data.csv")
+	fmt.Println("Data successfully inserted/updated in data.db")
 }
