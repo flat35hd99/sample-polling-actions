@@ -116,7 +116,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 // runCallCommand executes the call command
 func runCallCommand(cmd *cobra.Command, args []string) error {
 	toolName := args[0]
-	
+
 	// Check if help-tool flag is set
 	helpTool, err := cmd.Flags().GetBool("help-tool")
 	if err != nil {
