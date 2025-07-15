@@ -48,6 +48,7 @@ jobs:
 
       - name: Run polling script
         run: |
+          chmod +x bin/*
           curl -s $TARGET_URL | ./bin/inserter
 
       - name: Commit and push changes
