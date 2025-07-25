@@ -31,7 +31,7 @@ func main() {
 	// Initialize MCP client
 	var err error
 	mcpClient, err = client.NewStdioMCPClient(
-		"npx", []string{}, "-y", "@modelcontextprotocol/server-memory",
+		"hogehoge", []string{}, "fuga", "piyo",
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -169,12 +169,14 @@ func runCallCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, c := range resCallTool.Content {
-		// Check if the content is TextContent and print its text
-		if tc, ok := c.(mcp.TextContent); ok {
-			fmt.Println(tc.Text)
-		} else {
-			// Handle other content types if necessary, or just print a generic message
-			fmt.Printf("Tool returned non-text content of type %T: %+v\n", c, c)
+		switch value := c.(type) {
+		case mcp.TextContent:
+			fmt.Println(value.Text)
+		case mcp.ImageContent:
+			// Handle image content if needed
+			fmt.Println("Received image content, but image handling is not implemented in this CLI.")
+		default:
+			return fmt.Errorf("unsupported content type: %T", value)
 		}
 	}
 
